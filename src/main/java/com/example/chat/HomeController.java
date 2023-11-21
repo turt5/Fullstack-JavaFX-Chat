@@ -1,6 +1,9 @@
 package com.example.chat;
 
+import io.github.palexdev.materialfx.controls.MFXButton;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -14,17 +17,19 @@ import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.net.URL;
 import java.sql.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class HomeController implements Initializable {
 
+    public MFXButton refreshButton;
     @FXML
     private VBox mainVbox;
 
@@ -44,18 +49,22 @@ public class HomeController implements Initializable {
 
         String designation = isGuide ? "(Guide)" : "(Traveller)";
 
-        Label name = new Label(userName + "  " + designation);
+        Label name = new Label(userName);
         name.setLayoutX(110);
         name.setLayoutY(13);
         name.setStyle("-fx-font-family: 'Poppins'; -fx-font-size: 15px;-fx-font-weight: bold");
 
-        Label message = new Label(text);
+        Label message = new Label(text.isBlank() || text.isEmpty() ? "No message yet!":text);
         message.setLayoutX(110);
         message.setLayoutY(45);
         message.setStyle("-fx-font-family: 'Poppins';-fx-font-size: 13px;");
         message.setMaxWidth(250);
 
-        Label messageTime = new Label(time);
+
+        String formattedTime = formatWithoutSeconds(time.isBlank()||time.isEmpty()?"Unavailable":time);
+
+
+        Label messageTime = new Label(formattedTime);
         messageTime.setLayoutY(45);
         messageTime.setLayoutX(370);
         messageTime.setStyle("-fx-font-family: 'Poppins';-fx-font-size: 13px; -fx-text-fill: #0088ff;");
@@ -92,9 +101,26 @@ public class HomeController implements Initializable {
         openUserDetailsScene(name);
     }
 
+
+    private static String formatWithoutSeconds(String timeWithSeconds) {
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("hh:mm:ss a");
+        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("hh:mm a");
+
+        try {
+            LocalTime time = LocalTime.parse(timeWithSeconds, inputFormatter);
+            return time.format(outputFormatter);
+        } catch (Exception e) {
+            // Handle parsing errors, return the original string in case of failure
+            System.out.println("error");
+            return timeWithSeconds;
+        }
+    }
+
+
+
     private String currentTime() {
         LocalTime currentTime = LocalTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm:ss a");
         return currentTime.format(formatter);
     }
 
@@ -117,19 +143,28 @@ public class HomeController implements Initializable {
                     userDetailsController.setUserName(userName);
                     userDetailsController.setLastMessage(lastMessage);
                     userDetailsController.setLastMessageTime(lastMessageTime);
-
                     Scene userDetailsScene = new Scene(root);
-
-                    // Get the current stage
                     Stage currentStage = (Stage) mainVbox.getScene().getWindow();
-
-                    // Set the new scene
                     currentStage.setScene(userDetailsScene);
                     currentStage.show();
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void updateUI() {
+
+        Comparator<UserMessage> comparator = Comparator.comparing(UserMessage::getLastMessageTime).reversed();
+        Collections.sort(users, comparator);
+        for (UserMessage um : users) {
+            System.out.println(um.getLastMessageTime());
+        }
+
+        Platform.runLater(() -> mainVbox.getChildren().clear());
+        for (UserMessage user : users) {
+            Platform.runLater(() -> showUser(image, user.getUserName(), user.getMessage(), user.getLastMessageTime(), false));
         }
     }
 
@@ -172,15 +207,41 @@ public class HomeController implements Initializable {
                             showUser(image, userName, finalLast_message, finalLast_message_time, false);
                         });
 
-                        // Update the lastMessageId to the latest ID
                         lastMessageId = userID;
+
+                        UserMessage um = new UserMessage(userName, last_message_time, last_message);
+                        users.add(um);
                     }
+                    updateUI();
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }, 0, 1, TimeUnit.SECONDS);
+
+
+        refreshButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                try {
+                    reload();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+
+
     }
+
+    private void reload() throws IOException {
+        Stage currentStage=(Stage) refreshButton.getScene().getWindow();
+        Parent parent=FXMLLoader.load(getClass().getResource("Home.fxml"));
+        Scene scene=new Scene(parent);
+        currentStage.setScene(scene);
+    }
+
 
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASSWORD);
@@ -192,4 +253,5 @@ public class HomeController implements Initializable {
 
     private int lastMessageId = 0;
     Image image = new Image(getClass().getResourceAsStream("/com/example/chat/user.png"));
+    private List<UserMessage> users=new ArrayList<>();
 }

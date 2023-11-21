@@ -116,7 +116,7 @@ public class InboxController implements Initializable {
 
     private String currentTime() {
         LocalTime currentTime = LocalTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm:ss a");
         return currentTime.format(formatter);
     }
 

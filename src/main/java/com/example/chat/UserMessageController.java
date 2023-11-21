@@ -8,12 +8,14 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -36,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 public class UserMessageController implements Initializable {
     public MFXScrollPane scrollPane;
+    public AnchorPane mainAnchorpane;
     @FXML
     private MFXButton sendButton;
     @FXML
@@ -138,7 +141,7 @@ public class UserMessageController implements Initializable {
 
     private String currentTime() {
         LocalTime currentTime = LocalTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm:ss a");
         return currentTime.format(formatter);
     }
 
@@ -150,6 +153,8 @@ public class UserMessageController implements Initializable {
     }
 
     private void displayMessage(String message, String fromUser) {
+        stage=(Stage) mainAnchorpane.getScene().getWindow();
+        stage.setTitle(userName[0]);
         message = message.replaceAll("~", "\n");
         String finalMessage = message.trim();
 
@@ -192,6 +197,9 @@ public class UserMessageController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+
+
+
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Username");
         dialog.setHeaderText(null);
@@ -202,8 +210,10 @@ public class UserMessageController implements Initializable {
         if (result.isPresent()) {
             userName[0] = result.get();
             insertUser(userName[0]); // Insert or check existence of the user
-            // load message
-//            while (true){
+
+
+
+
             ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
             executorService.scheduleAtFixedRate(() -> {
                 try (Connection connection = getConnection()) {
@@ -271,6 +281,9 @@ public class UserMessageController implements Initializable {
             sendMessage(text, false,currentTime());
             textField.clear();
         });
+
+
+
     }
 
     private void sendMessage(String message, boolean isIncoming, String time) {
@@ -280,4 +293,9 @@ public class UserMessageController implements Initializable {
         thread.start();
     }
     private int lastMessageId = 0;
+    private Stage stage;
+
+    public void setStage(Stage stage) {
+        this.stage = stage;
+    }
 }
